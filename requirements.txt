@@ -1,0 +1,6 @@
+supabase
+pandas
+numpy
+streamlit
+altair
+openpyxl
