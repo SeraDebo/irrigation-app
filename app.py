@@ -23,9 +23,8 @@ def compute_etc_if_missing(df):
         df["etc"] = df["et0"] * df["kc"]
     return df
 
-
 # -----------------------
-# 🔥 FETCH ALL UNIQUE VALUES (FIXED)
+# FETCH UNIQUE VALUES
 # -----------------------
 
 @st.cache_data
@@ -49,9 +48,8 @@ def get_unique_values(column):
     df = pd.DataFrame(all_data)
     return sorted(df[column].dropna().unique().tolist())
 
-
 # -----------------------
-# LOAD FILTERED DATA
+# LOAD DATA
 # -----------------------
 
 @st.cache_data
@@ -76,7 +74,6 @@ def load_data(district, crop):
 
     return df
 
-
 # -----------------------
 # Soil Defaults
 # -----------------------
@@ -88,7 +85,7 @@ SOIL_DEFAULTS = {
 }
 
 # -----------------------
-# Simulation (your original logic)
+# Simulation
 # -----------------------
 
 def swb_simulation(df, root_depth_m=1.0, soil_fc=0.30, soil_wp=0.12,
@@ -135,50 +132,47 @@ def swb_simulation(df, root_depth_m=1.0, soil_fc=0.30, soil_wp=0.12,
 
     return pd.DataFrame(rows)
 
-
 # -----------------------
-# UI START
+# UI
 # -----------------------
 
 st.title("🌾 Smart Irrigation Advisor")
 
-# 🔥 Dropdowns (FIXED)
 district_list = get_unique_values("district")
 crop_list = get_unique_values("crop")
 
 selected_district = st.selectbox("Select District", ["All"] + district_list)
 selected_crop = st.selectbox("Select Crop", ["All"] + crop_list)
 
-# Load data
 df = load_data(selected_district, selected_crop)
 
 if df.empty:
     st.warning("No data found")
     st.stop()
 
-# Soil
 soil = st.selectbox("Soil Type", list(SOIL_DEFAULTS.keys()))
 soil_params = SOIL_DEFAULTS[soil]
 
-# Parameters
 root_depth = st.number_input("Root Depth (m)", value=1.0)
 depletion = st.slider("Depletion Fraction", 0.1, 0.9, 0.5)
 efficiency = st.slider("Irrigation Efficiency", 0.3, 0.95, 0.8)
 
 # -----------------------
-# RUN SIMULATION
+# RUN SIMULATION (🔥 UPDATED)
 # -----------------------
 
 if st.button("Run Simulation"):
 
-    sim_df = swb_simulation(
-        df,
-        root_depth_m=root_depth,
-        soil_fc=soil_params["fc"],
-        soil_wp=soil_params["wp"],
-        depletion_fraction=depletion,
-        irrigation_efficiency=efficiency
-    )
+    with st.spinner("Calculating irrigation schedule... 🌾"):
+
+        sim_df = swb_simulation(
+            df,
+            root_depth_m=root_depth,
+            soil_fc=soil_params["fc"],
+            soil_wp=soil_params["wp"],
+            depletion_fraction=depletion,
+            irrigation_efficiency=efficiency
+        )
 
     st.success("Simulation Complete")
 
@@ -186,12 +180,14 @@ if st.button("Run Simulation"):
     total_irrig = sim_df["irrigation_mm"].sum()
     events = sim_df["irrigated"].sum()
 
-    st.metric("Total Irrigation (mm)", f"{total_irrig:.1f}")
-    st.metric("Irrigation Events", int(events))
+    col1, col2 = st.columns(2)
+    col1.metric("Total Irrigation (mm)", f"{total_irrig:.1f}")
+    col2.metric("Irrigation Events", int(events))
 
     # Charts
     base = alt.Chart(sim_df).encode(x="date:T")
 
+    st.subheader("🌧️ Precipitation vs ETc")
     st.altair_chart(
         alt.layer(
             base.mark_bar(color="blue").encode(y="precip_mm"),
@@ -200,6 +196,7 @@ if st.button("Run Simulation"):
         use_container_width=True
     )
 
+    st.subheader("🌱 Soil Moisture & Irrigation")
     st.altair_chart(
         alt.layer(
             base.mark_line(color="green").encode(y="soil_mm"),
@@ -210,7 +207,7 @@ if st.button("Run Simulation"):
 
     # Download
     csv = sim_df.to_csv(index=False).encode("utf-8")
-    st.download_button("Download CSV", csv, "results.csv")
+    st.download_button("Download Results", csv, "results.csv")
 
 else:
-    st.info("Click Run Simulation")
+    st.info("Click 'Run Simulation'")
