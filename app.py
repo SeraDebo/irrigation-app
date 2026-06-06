@@ -825,7 +825,10 @@ with tab_advisor:
         crop_selected = st.selectbox("Crop Type", options=crop_options)
         
         # Load Kc defaults from dataset
-        crop_kc_row = df_kc_defaults[df_kc_defaults["crop"] == crop_selected]
+        if not df_kc_defaults.empty and "crop" in df_kc_defaults.columns:
+            crop_kc_row = df_kc_defaults[df_kc_defaults["crop"] == crop_selected]
+        else:
+            crop_kc_row = pd.DataFrame()
         if not crop_kc_row.empty:
             def_root = float(crop_kc_row.iloc[0]["root_depth_m"])
             def_p = float(crop_kc_row.iloc[0]["depletion_fraction_p"])
